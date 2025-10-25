@@ -1,212 +1,205 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import AuthContext from "../context/AuthContext";
+import { logo } from "../assets/Img";
 
-// --- Íconos Inline SVG (Solución al error de compilación por dependencia externa) ---
+// --- Íconos SVG --- //
 const UserIcon = (props) => (
-  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+    <circle cx="12" cy="7" r="4" />
+  </svg>
 );
+
 const LockIcon = (props) => (
-  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <rect width="18" height="11" x="3" y="11" rx="2" />
+    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+  </svg>
 );
+
 const SpinnerIcon = (props) => (
-  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5 animate-spin">
+    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+  </svg>
 );
 
-// --- MOCKS para hacer el componente ejecutable en un solo archivo ---
-const useNavigate = () => (path) => {
-  console.log(`Navegando a: ${path}`);
-};
-
-const AuthContext = React.createContext({
-  isAuthenticated: false,
-  // Simula un login exitoso después de 1 segundo
-  login: async (username, password) => {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    if (username === "test@rh.com" && password === "1234") {
-      return { ok: true, message: "Éxito" };
-    } else {
-      return { ok: false, message: "Usuario o contraseña incorrectos." };
-    }
-  },
-});
-
-// 3. Componente principal
 export default function LoginPage() {
-  // Uso de useContext con el mock
   const { isAuthenticated, login } = useContext(AuthContext);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    document.title = "AutoGestiónRH - Login";
-    // Nota: La navegación se simulará en la consola ya que el router no está presente.
-    if (isAuthenticated) navigate("/dashboard");
-  }, [isAuthenticated, navigate]);
+  const inputRef = useRef(null);
 
   const [form, setForm] = useState({ username: "", password: "" });
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // 🔹 Redirigir si el usuario ya está autenticado
+  useEffect(() => {
+    document.title = "AutoGestiónRH - Iniciar Sesión";
+    if (isAuthenticated) navigate("/inicio");
+    inputRef.current?.focus();
+  }, [isAuthenticated, navigate]);
+
+  // 🔹 Validación del formulario
   const validate = () => {
     const e = {};
-    if (!form.username.trim()) e.username = "Ingresa tu usuario o correo.";
-    if (!form.password) e.password = "Ingresa tu contraseña.";
+    if (!form.username.trim()) e.username = "Campo requerido.";
+    if (!form.password) e.password = "Campo requerido.";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
+  // 🔹 Manejar cambios de inputs
   const handleChange = (e) => {
-    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
-    // Limpia el error de campo al escribir (Mejora UX)
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     setErrors((prev) => ({ ...prev, [e.target.name]: undefined }));
     setServerError("");
   };
 
+  // 🔹 Enviar formulario
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setServerError("");
     if (!validate()) return;
     setLoading(true);
-    
-    // Simulación del intento de login
-    const res = await login(form.username.trim(), form.password);
-    
+
+    const res = await login(form.username, form.password);
     setLoading(false);
-    
+
     if (res.ok) {
-      navigate("/dashboard");
+      navigate("/inicio");
     } else {
-      // Muestra error del servidor
-      setServerError(res.message || "Ocurrió un error inesperado al iniciar sesión.");
+      setServerError(res.message || "Error al iniciar sesión.");
+      // Limpia error después de 5s
+      setTimeout(() => setServerError(""), 5000);
     }
   };
 
   return (
-    // Contenedor principal: Fondo más limpio y altura total
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4 font-sans">
-      
-      {/* Tarjeta de Login: Mejorada con sombra más profunda y bordes curvos */}
-      <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl p-8 sm:p-10 border border-gray-100 transform transition-all hover:shadow-3xl">
-        
-        {/* Encabezado con branding mejorado */}
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-green-50 to-white p-6 font-sans">
+      <div className="w-full max-w-md backdrop-blur-xl bg-white/70 rounded-3xl shadow-2xl border border-white/20 p-10 transition-all duration-300 hover:shadow-green-200/50">
+
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-extrabold text-green-700 tracking-tight">
-            AutoGestiónRH <span className="text-yellow-500">💼</span>
-          </h2>
-          <p className="text-gray-500 mt-1 text-sm">Bienvenido de vuelta, ingresa para continuar</p>
+          <div className="flex justify-center mb-4">
+            <div className="w-28 h-28 rounded-full border-4 border-green-600 flex items-center justify-center shadow-md">
+              <img
+                src={logo}
+                alt="Logo Comfachocó"
+                className="w-16 h-16 object-contain"
+              />
+            </div>
+          </div>
+
+          <h1 className="text-3xl font-extrabold text-green-700">
+            AutoGestión<span className="text-yellow-500">RH</span>
+          </h1>
+
+          <p className="text-gray-500 mt-2 text-sm">
+            Por favor, ingresa tus datos para continuar
+          </p>
         </div>
 
-        {/* Mensaje de Error del Servidor (UX: siempre visible y destacado) */}
+
+        {/* --- Error del servidor --- */}
         {serverError && (
-          <div 
-            className="bg-red-50 text-red-600 text-sm p-3 rounded-xl mb-6 border-l-4 border-red-400"
+          <div
+            className="bg-red-50 border border-red-200 text-red-600 p-3 rounded-xl text-sm mb-6 animate-fadeIn"
             role="alert"
           >
-            <p className="font-medium">{serverError}</p>
+            {serverError}
           </div>
         )}
 
+        {/* --- Formulario --- */}
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Campo de Usuario */}
+          {/* Campo usuario */}
           <div>
-            <label className="block text-gray-700 text-sm font-semibold mb-2">
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
               Usuario o Correo
             </label>
-            {/* Input con Icono y Focus State Mejorado */}
-            <div 
-              className={`flex items-center bg-white border rounded-xl shadow-sm transition-all duration-300 ${
-                errors.username ? 'border-red-400' : 'border-gray-200 focus-within:ring-3 focus-within:ring-green-400 focus-within:border-green-500'
-              }`}
+            <div
+              className={`flex items-center border rounded-xl px-3 py-2 transition-all ${errors.username
+                ? "border-red-400 ring-1 ring-red-300"
+                : "border-gray-200 focus-within:border-green-500 focus-within:ring-2 focus-within:ring-green-200"
+                }`}
             >
-              <span className="px-4 text-gray-400 text-lg">
-                <UserIcon className="w-5 h-5" />
-              </span>
+              <UserIcon className="text-gray-400 mr-3" />
               <input
-                type="text"
+                ref={inputRef}
                 name="username"
                 value={form.username}
                 onChange={handleChange}
                 placeholder="ej. juan.perez@empresa.com"
-                className="w-full py-3 pr-4 text-sm focus:outline-none bg-transparent"
+                className="w-full text-sm bg-transparent outline-none"
                 aria-invalid={!!errors.username}
-                aria-describedby="username-error"
               />
             </div>
             {errors.username && (
-              <p id="username-error" className="text-red-500 text-xs mt-1 font-medium">{errors.username}</p>
+              <p className="text-xs text-red-500 mt-1">{errors.username}</p>
             )}
           </div>
 
-          {/* Campo de Contraseña */}
+          {/* Campo contraseña */}
           <div>
-            <label className="block text-gray-700 text-sm font-semibold mb-2">
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
               Contraseña
             </label>
-             {/* Input con Icono y Focus State Mejorado */}
-            <div 
-              className={`flex items-center bg-white border rounded-xl shadow-sm transition-all duration-300 ${
-                errors.password ? 'border-red-400' : 'border-gray-200 focus-within:ring-3 focus-within:ring-green-400 focus-within:border-green-500'
-              }`}
+            <div
+              className={`flex items-center border rounded-xl px-3 py-2 transition-all ${errors.password
+                ? "border-red-400 ring-1 ring-red-300"
+                : "border-gray-200 focus-within:border-green-500 focus-within:ring-2 focus-within:ring-green-200"
+                }`}
             >
-              <span className="px-4 text-gray-400 text-lg">
-                <LockIcon className="w-5 h-5" />
-              </span>
+              <LockIcon className="text-gray-400 mr-3" />
               <input
                 type="password"
                 name="password"
                 value={form.password}
                 onChange={handleChange}
-                placeholder="Ingresa tu contraseña"
-                className="w-full py-3 pr-4 text-sm focus:outline-none bg-transparent"
+                placeholder="••••••••"
+                className="w-full text-sm bg-transparent outline-none"
                 aria-invalid={!!errors.password}
-                aria-describedby="password-error"
               />
             </div>
             {errors.password && (
-              <p id="password-error" className="text-red-500 text-xs mt-1 font-medium">{errors.password}</p>
+              <p className="text-xs text-red-500 mt-1">{errors.password}</p>
             )}
           </div>
 
-          {/* Botón de Iniciar Sesión (CTA Mejorado) */}
+          {/* Botón */}
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-3 mt-4 text-white text-lg font-bold rounded-xl shadow-lg transition duration-300 flex items-center justify-center space-x-2 
-              ${loading
-                ? "bg-green-400 cursor-not-allowed shadow-none"
-                : "bg-green-600 hover:bg-green-700 hover:shadow-xl active:bg-green-800"
+            className={`w-full flex items-center justify-center gap-2 py-3 mt-4 font-bold rounded-xl text-white transition-all ${loading
+              ? "bg-green-400 cursor-not-allowed"
+              : "bg-green-600 hover:bg-green-700 active:scale-95 shadow-lg hover:shadow-green-300/30"
               }`}
           >
             {loading ? (
               <>
-                <SpinnerIcon className="w-5 h-5" />
-                <span>Validando...</span>
+                <SpinnerIcon /> Validando...
               </>
             ) : (
-              <span>Iniciar Sesión</span>
+              "Iniciar Sesión"
             )}
           </button>
 
-          {/* Enlace de recuperación */}
-          <div className="text-center pt-1">
+          {/* Recuperar contraseña */}
+          <div className="text-center">
             <button
-              onClick={(ev) => ev.preventDefault()}
-              className="text-gray-500 text-xs hover:text-green-600 transition duration-200 font-medium"
+              onClick={(e) => e.preventDefault()}
+              className="text-xs text-gray-500 hover:text-green-600 mt-2 transition-all"
             >
               ¿Olvidaste tu contraseña?
             </button>
           </div>
         </form>
 
-        {/* Footer */}
-        <hr className="my-6 border-gray-100" />
-
-        <div className="text-center space-y-1">
-          <p className="text-gray-400 text-xs">
-            © 2025 Comfachocó - Chocó
-          </p>
-          <div className="text-center text-[10px] text-gray-400 font-light">
-            Equipo - Coders: Karina, Duvan, Valery, Gustavo
-          </div>
+        {/* --- Footer --- */}
+        <hr className="my-8 border-gray-200" />
+        <div className="text-center text-gray-400 text-xs">
+          © 2025 Comfachocó · Desarrollado por{" "}
+          <span className="text-green-600 font-medium">Equipo Coders</span>
         </div>
       </div>
     </div>
